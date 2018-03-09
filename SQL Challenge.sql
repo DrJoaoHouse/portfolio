@@ -28,51 +28,34 @@ ORDER BY movie.title;
 #5 For each movie that has at least one rating,
 -- find the movie title and total number of stars, 
 -- the highest star and the person who gave highest star.
-SELECT X.movietitle, X.reviewername, X.maxstar, Y.sumstar FROM
-(
-SELECT movie.title as movietitle, movie.mID, GROUP_CONCAT(reviewer.name) as reviewername, rating.stars AS maxstar 
-FROM rating JOIN movie JOIN reviewer  
-ON movie.mID = rating.mID AND rating.rID = reviewer.rID  
-WHERE rating.stars =  
-(
-	SELECT MAX(R2.stars)  
-	FROM rating R2 JOIN movie ON R2.mID = movie.mID  
-	WHERE R2.mID = rating.mID
-) 
-GROUP BY movie.title
+SELECT X.movietitle, X.reviewername, X.maxstar, Y.sumstar FROM (
+	SELECT movie.title as movietitle, movie.mID, GROUP_CONCAT(reviewer.name) as reviewername, rating.stars AS maxstar 
+	FROM rating JOIN movie JOIN reviewer  
+	ON movie.mID = rating.mID AND rating.rID = reviewer.rID  
+	WHERE rating.stars =  (
+		SELECT MAX(R2.stars)  
+		FROM rating R2 JOIN movie ON R2.mID = movie.mID  
+		WHERE R2.mID = rating.mID
+	) 
+	GROUP BY movie.title
 ) X
 JOIN
-(SELECT SUM(rating.stars) as sumstar, movie.mID FROM rating JOIN movie 
-ON rating.mID = movie.mID GROUP BY movie.mID) Y
+(
+	SELECT SUM(rating.stars) as sumstar, movie.mID FROM rating JOIN movie 
+	ON rating.mID = movie.mID GROUP BY movie.mID
+) Y
 ON X.mID = Y.mID;
-
-SELECT t1.title, t1.sumstars, t1.maxstars, GROUP_CONCAT(Reviewer.name) FROM (
-	SELECT Movie.*, SUM(stars) as sumstars, MAX(stars) as maxstars FROM Movie 
-	JOIN Rating ON Movie.mID = Rating.`mID`
-	GROUP BY Movie.mID
-) t1
-JOIN Rating ON t1.maxstars = Rating.stars AND t1.mID = Rating.mID
-JOIN Reviewer ON Rating.rID = Reviewer.rID
-GROUP BY t1.mID;
 
 #6 For all cases where the same reviewer rated the same movie twice 
 -- and gave it a higher rating the second time, 
 -- return the reviewer's name and the title of the movie.
 SELECT reviewer.name, movie.title
-FROM reviewer JOIN movie JOIN 
-(
+FROM reviewer JOIN movie JOIN (
 	SELECT R1.rID, R1.mID 
 	FROM rating R1, rating R2 
 	WHERE R1.rID=R2.rID AND R1.mID=R2.mID AND R2.ratingDate>R1.ratingDate AND R2.stars>R1.stars
 ) AS T
 ON reviewer.rID=T.rID AND Movie.mID=T.mID;
-  
-SELECT movie.title, reviewer.name 
-FROM Movie 
-JOIN Rating R1 USING(mId)
-JOIN Rating R2 USING(rId, mId)
-JOIN Reviewer USING(rId)
-WHERE R1.ratingDate < R2.ratingDate AND R1.stars < R2.stars;
 
 #7 For each movie, return the title and the 'rating spread', 
 -- that is, the difference between highest and lowest ratings given to that movie. 
