@@ -1,0 +1,92 @@
+#1 Find the titles of all movies directed by Steven Spielberg.
+SELECT movie.title, movie.director 
+FROM movie 
+WHERE director = 'Steven Spielberg';
+
+#2 Find all years that have a movie that received a rating of 4 or 5, and sort them in increasing order.
+SELECT movie.title, movie.year, rating.stars 
+FROM movie 
+JOIN rating ON movie.mID = rating.mID
+WHERE rating.stars > 3 
+ORDER BY movie.year ASC;
+
+#3 Find the titles of all movies that have no ratings
+SELECT movie.title, rating.stars 
+FROM movie LEFT JOIN rating 
+ON movie.mID = rating.mID
+WHERE rating.rID IS NULL;
+
+#4 For each movie that has at least one rating, 
+-- find the highest number of stars that movie received. 
+-- Return the movie title and number of stars. Sort by movie title.
+SELECT movie.title, MAX(rating.stars) as stars
+FROM movie JOIN rating 
+ON movie.mID = rating.mID 
+GROUP BY movie.title
+ORDER BY movie.title;
+
+#5 For each movie that has at least one rating,
+-- find the movie title and total number of stars, 
+-- the highest star and the person who gave highest star.
+SELECT X.movietitle, X.reviewername, X.maxstar, Y.sumstar FROM
+(
+SELECT movie.title as movietitle, movie.mID, GROUP_CONCAT(reviewer.name) as reviewername, rating.stars AS maxstar 
+FROM rating JOIN movie JOIN reviewer  
+ON movie.mID = rating.mID AND rating.rID = reviewer.rID  
+WHERE rating.stars =  
+(
+	SELECT MAX(R2.stars)  
+	FROM rating R2 JOIN movie ON R2.mID = movie.mID  
+	WHERE R2.mID = rating.mID
+) 
+GROUP BY movie.title
+) X
+JOIN
+(SELECT SUM(rating.stars) as sumstar, movie.mID FROM rating JOIN movie 
+ON rating.mID = movie.mID GROUP BY movie.mID) Y
+ON X.mID = Y.mID;
+
+SELECT t1.title, t1.sumstars, t1.maxstars, GROUP_CONCAT(Reviewer.name) FROM (
+	SELECT Movie.*, SUM(stars) as sumstars, MAX(stars) as maxstars FROM Movie 
+	JOIN Rating ON Movie.mID = Rating.`mID`
+	GROUP BY Movie.mID
+) t1
+JOIN Rating ON t1.maxstars = Rating.stars AND t1.mID = Rating.mID
+JOIN Reviewer ON Rating.rID = Reviewer.rID
+GROUP BY t1.mID;
+
+#6 For all cases where the same reviewer rated the same movie twice 
+-- and gave it a higher rating the second time, 
+-- return the reviewer's name and the title of the movie.
+SELECT reviewer.name, movie.title
+FROM reviewer JOIN movie JOIN 
+(
+	SELECT R1.rID, R1.mID 
+	FROM rating R1, rating R2 
+	WHERE R1.rID=R2.rID AND R1.mID=R2.mID AND R2.ratingDate>R1.ratingDate AND R2.stars>R1.stars
+) AS T
+ON reviewer.rID=T.rID AND Movie.mID=T.mID;
+  
+SELECT movie.title, reviewer.name 
+FROM Movie 
+JOIN Rating R1 USING(mId)
+JOIN Rating R2 USING(rId, mId)
+JOIN Reviewer USING(rId)
+WHERE R1.ratingDate < R2.ratingDate AND R1.stars < R2.stars;
+
+#7 For each movie, return the title and the 'rating spread', 
+-- that is, the difference between highest and lowest ratings given to that movie. 
+-- Sort by rating spread from highest to lowest, then by movie title.
+SELECT movie.title, (MAX(rating.stars) - MIN(rating.stars)) AS ratingspread 
+FROM movie 
+JOIN rating ON movie.mID = rating.mID
+GROUP BY movie.mID
+ORDER by ratingspread DESC, movie.title;
+
+#8 Find the names of reviewers for every director (one row per director with all reviewers)
+SELECT Movie.director, GROUP_CONCAT(Reviewer.name) as reviewers
+FROM Movie 
+JOIN Rating ON Rating.mID = Movie.mID 
+JOIN Reviewer ON Rating.rID = Reviewer.rID
+WHERE director IS NOT NULL
+GROUP BY director;
